@@ -33,6 +33,7 @@ let pingTimer = null;
 let resyncTimer = null;
 let calibrationTimer = null;
 let offsetMs = 0;
+let offsetAudioSec = 0;
 const offsetSamples = [];
 const MAX_OFFSET_SAMPLES = 20;
 const CALIBRATION_SAMPLES = 12;
@@ -43,7 +44,7 @@ let currentState = {
   bpm: Number(bpmInput.value),
   beatsPerBar: Number(beatsInput.value),
   leadInMs: Number(leadInInput.value),
-  startAtLeader: null,
+  startAtLeaderAudio: null, // in seconds, leader audio clock
   playing: false,
 };
 
@@ -94,13 +95,16 @@ calibrateBtn.addEventListener('click', () => {
   }
   // If you're the leader, no need to ping yourself; mark calibrated immediately.
   if (!directLeaderConn || directLeaderConn.peer === selfId) {
+    ensureAudio();
     offsetMs = 0;
+    offsetAudioSec = 0;
     setOffsetStatus(offsetMs);
     calibrateBtn.textContent = 'Calibrated';
     calibrateBtn.disabled = false;
     startBtn.disabled = false;
     return;
   }
+  ensureAudio();
   calibrateBtn.textContent = 'Calibrating…';
   calibrateBtn.disabled = true;
   startBtn.disabled = true;
@@ -115,13 +119,13 @@ startBtn.addEventListener('click', () => {
     return;
   }
   ensureAudio();
-  const beatMs = 60000 / currentState.bpm;
-  const barMs = beatMs * currentState.beatsPerBar;
-  const nowLeader = performance.now();
-  let startAtLeader = nowLeader + currentState.leadInMs;
-  startAtLeader = Math.ceil(startAtLeader / barMs) * barMs; // snap to next bar boundary
-  startPlayback(startAtLeader);
-  currentState.startAtLeader = startAtLeader;
+  const beatSec = 60 / currentState.bpm;
+  const barSec = beatSec * currentState.beatsPerBar;
+  const nowLeaderAudio = audioCtx.currentTime;
+  let startAtLeaderAudio = nowLeaderAudio + currentState.leadInMs / 1000;
+  startAtLeaderAudio = Math.ceil(startAtLeaderAudio / barSec) * barSec; // snap to next bar
+  startPlayback(startAtLeaderAudio);
+  currentState.startAtLeaderAudio = startAtLeaderAudio;
   currentState.playing = true;
   broadcastState();
 });
@@ -323,10 +327,12 @@ function handleMessage(conn, msg) {
   }
 
   if (data.type === 'ping' && isLeader()) {
+    ensureAudio();
     send(conn, {
       type: 'pong',
       t0: data.t0,
       leaderNow: performance.now(),
+      leaderAudioTime: audioCtx.currentTime,
       calibrate: data.calibrate === true,
     });
     return;
@@ -335,8 +341,11 @@ function handleMessage(conn, msg) {
   if (data.type === 'pong' && directLeaderConn && conn.peer === directLeaderConn.peer) {
     const t1 = performance.now();
     const rtt = t1 - data.t0;
-    const newOffset = data.leaderNow - (data.t0 + rtt / 2);
-    addOffsetSample(newOffset, data.calibrate === true);
+    const rttSec = rtt / 1000;
+    ensureAudio();
+    const localAudioNow = audioCtx.currentTime;
+    const newOffsetAudio = data.leaderAudioTime - (localAudioNow + rttSec / 2);
+    addOffsetSample(newOffsetAudio, data.calibrate === true);
     return;
   }
 }
@@ -471,8 +480,9 @@ function applyRemoteState(data) {
   leadInInput.value = currentState.leadInMs;
   renderMeter(currentState.beatsPerBar);
 
-  if (data.playing && data.startAtLeader) {
-    startPlayback(data.startAtLeader);
+  if (data.playing && data.startAtLeaderAudio !== null) {
+    ensureAudio();
+    startPlayback(data.startAtLeaderAudio);
   } else if (!data.playing) {
     stopPlayback();
   }
@@ -490,7 +500,7 @@ function ensureAudio() {
 
 function startPlayback(startAtLeader) {
   ensureAudio();
-  currentState.startAtLeader = startAtLeader;
+  currentState.startAtLeaderAudio = startAtLeader;
   currentState.playing = true;
   recalcFromLeaderTime();
   if (!schedulerId) schedulerId = setInterval(schedulerTick, 20);
@@ -499,7 +509,7 @@ function startPlayback(startAtLeader) {
 
 function stopPlayback() {
   currentState.playing = false;
-  currentState.startAtLeader = null;
+  currentState.startAtLeaderAudio = null;
   nextBeatTime = null;
   currentBeatIndex = 0;
   if (schedulerId) {
@@ -511,15 +521,15 @@ function stopPlayback() {
 }
 
 function recalcFromLeaderTime() {
-  if (!audioCtx || !currentState.playing || currentState.startAtLeader === null) return;
-  const localNow = performance.now() + offsetMs;
-  const beatMs = 60000 / currentState.bpm;
-  const elapsed = localNow - currentState.startAtLeader;
-  const beatNumber = Math.max(0, Math.floor(elapsed / beatMs));
+  if (!audioCtx || !currentState.playing || currentState.startAtLeaderAudio === null) return;
+  const localAudioNow = audioCtx.currentTime + offsetAudioSec;
+  const beatSec = 60 / currentState.bpm;
+  const elapsed = localAudioNow - currentState.startAtLeaderAudio;
+  const beatNumber = Math.max(0, Math.floor(elapsed / beatSec));
   currentBeatIndex = beatNumber % currentState.beatsPerBar;
-  const beatStartLeader = currentState.startAtLeader + beatNumber * beatMs;
-  const offset = beatStartLeader - localNow;
-  nextBeatTime = audioCtx.currentTime + Math.max(0, offset) / 1000;
+  const beatStartLeader = currentState.startAtLeaderAudio + beatNumber * beatSec;
+  const offsetSec = beatStartLeader - localAudioNow;
+  nextBeatTime = audioCtx.currentTime + Math.max(0, offsetSec);
 }
 
 function schedulerTick() {
@@ -592,13 +602,14 @@ function setOffsetStatus(offset) {
   }
 }
 
-function addOffsetSample(sample, isCalibration = false) {
-  offsetSamples.push(sample);
+function addOffsetSample(sampleAudioSec, isCalibration = false) {
+  offsetSamples.push(sampleAudioSec);
   if (offsetSamples.length > MAX_OFFSET_SAMPLES) offsetSamples.shift();
   const sorted = [...offsetSamples].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  offsetMs =
+  offsetAudioSec =
     sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  offsetMs = offsetAudioSec * 1000;
   setOffsetStatus(offsetMs);
   if (isCalibration && offsetSamples.length >= CALIBRATION_SAMPLES) {
     finishCalibration();
