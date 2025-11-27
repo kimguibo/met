@@ -43,10 +43,11 @@
         <div class="field-grid">
           <label>BPM <input id="bpm" type="number" min="30" max="240" value="100" /></label>
           <label>Beats/Bar <input id="beats" type="number" min="1" max="12" value="4" /></label>
-          <label>Lead-in (ms) <input id="leadIn" type="number" min="0" max="4000" value="1000" /></label>
+          <label>Lead-in (ms) <input id="leadIn" type="number" min="0" max="4000" value="600" /></label>
         </div>
         <div class="controls">
-          <button id="start">Start</button>
+          <button id="calibrate">Calibrate</button>
+          <button id="start" disabled>Start</button>
           <button id="stop" class="ghost">Stop</button>
           <label class="inline">
             <input id="mute" type="checkbox" />
