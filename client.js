@@ -30,6 +30,8 @@ let leaderId = null;
 let directLeaderConn = null;
 let pingTimer = null;
 let offsetMs = 0;
+const offsetSamples = [];
+const MAX_OFFSET_SAMPLES = 9;
 let peers = new Set();
 let currentState = {
   bpm: Number(bpmInput.value),
@@ -82,7 +84,11 @@ startBtn.addEventListener('click', () => {
     return;
   }
   ensureAudio();
-  const startAtLeader = performance.now() + currentState.leadInMs;
+  const beatMs = 60000 / currentState.bpm;
+  const barMs = beatMs * currentState.beatsPerBar;
+  const nowLeader = performance.now();
+  let startAtLeader = nowLeader + currentState.leadInMs;
+  startAtLeader = Math.ceil(startAtLeader / barMs) * barMs; // snap to next bar boundary
   startPlayback(startAtLeader);
   currentState.startAtLeader = startAtLeader;
   currentState.playing = true;
@@ -250,8 +256,7 @@ function handleMessage(conn, msg) {
     const t1 = performance.now();
     const rtt = t1 - data.t0;
     const newOffset = data.leaderNow - (data.t0 + rtt / 2);
-    offsetMs = offsetMs ? offsetMs * 0.6 + newOffset * 0.4 : newOffset;
-    setOffsetStatus(offsetMs);
+    addOffsetSample(newOffset);
     return;
   }
 }
@@ -317,7 +322,7 @@ function startPing() {
     if (directLeaderConn?.open) {
       send(directLeaderConn, { type: 'ping', t0: performance.now() });
     }
-  }, 1500);
+  }, 800);
 }
 
 function stopPing() {
@@ -354,7 +359,7 @@ function startPlayback(startAtLeader) {
   currentState.startAtLeader = startAtLeader;
   currentState.playing = true;
   recalcFromLeaderTime();
-  if (!schedulerId) schedulerId = setInterval(schedulerTick, 40);
+  if (!schedulerId) schedulerId = setInterval(schedulerTick, 30);
 }
 
 function stopPlayback() {
@@ -383,7 +388,7 @@ function recalcFromLeaderTime() {
 
 function schedulerTick() {
   if (!audioCtx || !currentState.playing || nextBeatTime === null) return;
-  const lookAhead = 0.15;
+  const lookAhead = 0.1;
   const beatDur = 60 / currentState.bpm;
   while (nextBeatTime < audioCtx.currentTime + lookAhead) {
     scheduleClick(nextBeatTime, currentBeatIndex);
@@ -449,6 +454,18 @@ function setOffsetStatus(offset) {
   } else {
     offsetStatus.textContent = 'Offset: —';
   }
+}
+
+function addOffsetSample(sample) {
+  offsetSamples.push(sample);
+  if (offsetSamples.length > MAX_OFFSET_SAMPLES) offsetSamples.shift();
+  const sorted = [...offsetSamples].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  offsetMs =
+    sorted.length % 2 === 1 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  setOffsetStatus(offsetMs);
+  // Recalculate schedule promptly if playing.
+  recalcFromLeaderTime();
 }
 
 function isLeader() {
