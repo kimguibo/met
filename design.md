@@ -24,10 +24,11 @@
 - **Client (Browser)**: Single-page HTML/JS (no framework, no build step).
   - WebRTC data channel (via PeerJS) to hub; direct channel to leader for ping/pong clock offset.
   - Leader broadcast: tempo, time signature, start time (leader clock); followers convert via offset and schedule audio.
-  - Web Audio API scheduler with look-ahead (e.g., 100 ms) to pre-schedule ticks; visual grid stays in sync.
+  - Pre-start calibration (rapid ping/pong to leader) to estimate offset before enabling Start.
+  - Web Audio API scheduler with short look-ahead; visual grid stays in sync.
 
 ## Sync Strategy
-- **Clock Alignment**: Followers ping/pong the leader over a direct data channel to estimate RTT/2 offset to the leader’s `performance.now()`. Periodic pings keep offset fresh.
+- **Clock Alignment**: Followers ping/pong the leader over a direct data channel to estimate RTT/2 offset to the leader’s `performance.now()`. A short calibration burst runs before Start; periodic pings keep offset fresh.
 - **Leader Broadcast**: Leader sends `{bpm, beatsPerBar, leadInMs, startAtLeader}` via hub; `startAtLeader` is leader-clock time.
 - **Start/Recover**: Followers convert `startAtLeader` using their offset, schedule ahead, and if they join mid-loop recompute beat index from elapsed time.
 - **Fault Tolerance**: Any peer may press “Become leader”; hub relays the new leader ID to the room.
