@@ -52,6 +52,7 @@ let audioCtx = null;
 let schedulerId = null;
 let nextBeatTime = null;
 let currentBeatIndex = 0;
+let visualRaf = null;
 
 shareUrlInput.value = location.href;
 copyUrlBtn.addEventListener('click', async () => {
@@ -505,6 +506,7 @@ function startPlayback(startAtLeader) {
   recalcFromLeaderTime();
   if (!schedulerId) schedulerId = setInterval(schedulerTick, 20);
   startResync();
+  startVisualLoop();
 }
 
 function stopPlayback() {
@@ -517,6 +519,7 @@ function stopPlayback() {
     schedulerId = null;
   }
   stopResync();
+  stopVisualLoop();
   highlightBeat(-1);
 }
 
@@ -538,7 +541,6 @@ function schedulerTick() {
   const beatDur = 60 / currentState.bpm;
   while (nextBeatTime < audioCtx.currentTime + lookAhead) {
     scheduleClick(nextBeatTime, currentBeatIndex);
-    scheduleVisual(nextBeatTime, currentBeatIndex);
     nextBeatTime += beatDur;
     currentBeatIndex = (currentBeatIndex + 1) % currentState.beatsPerBar;
   }
@@ -560,11 +562,6 @@ function scheduleClick(time, beatIndex) {
   osc.stop(time + 0.12);
 }
 
-function scheduleVisual(time, beatIndex) {
-  const delayMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
-  setTimeout(() => highlightBeat(beatIndex), delayMs);
-}
-
 function renderMeter(beats) {
   meter.innerHTML = '';
   for (let i = 0; i < beats; i += 1) {
@@ -580,6 +577,29 @@ function highlightBeat(index) {
   children.forEach((child, idx) => {
     child.classList.toggle('active', idx === index);
   });
+}
+
+function startVisualLoop() {
+  stopVisualLoop();
+  const loop = () => {
+    if (!audioCtx || !currentState.playing || currentState.startAtLeaderAudio === null) return;
+    const localAudioNow = audioCtx.currentTime + offsetAudioSec;
+    const beatSec = 60 / currentState.bpm;
+    const elapsed = localAudioNow - currentState.startAtLeaderAudio;
+    if (elapsed >= 0) {
+      const beatNumber = Math.floor(elapsed / beatSec);
+      highlightBeat(beatNumber % currentState.beatsPerBar);
+    }
+    visualRaf = requestAnimationFrame(loop);
+  };
+  visualRaf = requestAnimationFrame(loop);
+}
+
+function stopVisualLoop() {
+  if (visualRaf) {
+    cancelAnimationFrame(visualRaf);
+    visualRaf = null;
+  }
 }
 
 function updatePeerCount() {
