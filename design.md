@@ -33,6 +33,16 @@
 - **Start/Recover**: Followers convert `startAtLeader` using their offset, schedule ahead, and if they join mid-loop recompute beat index from elapsed time.
 - **Fault Tolerance**: Any peer may press “Become leader”; hub relays the new leader ID to the room.
 
+## Tap Tempo Logic
+- A "Tap" button will be added to the UI.
+- When the user taps the button, the timestamp of the tap is recorded.
+- A history of the last N taps (e.g., 4 taps) is maintained.
+- The average interval between these taps is calculated.
+- If the user stops tapping for a certain period (e.g., 2 seconds), the tap history is cleared.
+- The calculated average interval is converted to BPM: `BPM = 60 / average_interval_in_seconds`.
+- The BPM input field is updated with the new value.
+- If the user is the leader, the new BPM is broadcast to all followers.
+
 ## Data Model (messages)
 - `hello`: client → hub to register.
 - `leader`: hub ↔ peers to announce the current leader ID.
@@ -41,6 +51,7 @@
 
 ## UI/UX Outline
 - Minimal single page: room code input, "Host"/"Join" buttons, tempo slider/input, beats-per-bar selector, play/stop toggle, mute toggle.
+- **Tap Tempo**: A "Tap" button allows the user to set the BPM by tapping at the desired speed.
 - Visual ticks: render circles/slots; active slot highlighted as in examples:
   - 4/4: `( v - - - )` style loop.
   - 5/4: `( v - - - - )` style loop.
