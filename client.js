@@ -411,6 +411,12 @@ function connectToLeader(id) {
     stopPing();
     stopResync();
   }
+  minRtt = Infinity;
+  bestOffset = 0;
+  offsetAudioSec = 0;
+  offsetSamples.length = 0;
+  setOffsetStatus('Offset: —');
+
   directLeaderConn = peer.connect(id, { reliable: true });
   directLeaderConn.on('open', () => {
     startPing();
@@ -528,7 +534,7 @@ function stopPlayback() {
 
 function recalcFromLeaderTime() {
   // Don't calculate timing until we have an offset from the leader.
-  if (!isLeader() && offsetAudioSec === 0) return;
+  if (!isLeader() && minRtt === Infinity) return;
 
   if (!audioCtx || !currentState.playing || currentState.startAtLeaderAudio === null) return;
   const localAudioNow = audioCtx.currentTime + offsetAudioSec;
@@ -682,6 +688,12 @@ function teardown() {
   bpmInput.disabled = false;
   beatsInput.disabled = false;
   leadInInput.disabled = false;
+
+  minRtt = Infinity;
+  bestOffset = 0;
+  offsetAudioSec = 0;
+  offsetSamples.length = 0;
+  setOffsetStatus('Offset: —');
 }
 
 function finishCalibration() {
