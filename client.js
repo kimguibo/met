@@ -527,7 +527,9 @@ function stopPlayback() {
 }
 
 function recalcFromLeaderTime() {
-  console.log(`recalcFromLeaderTime: audioCtx=${!!audioCtx}, playing=${currentState.playing}, startAtLeaderAudio=${currentState.startAtLeaderAudio}`);
+  // Don't calculate timing until we have an offset from the leader.
+  if (!isLeader() && offsetAudioSec === 0) return;
+
   if (!audioCtx || !currentState.playing || currentState.startAtLeaderAudio === null) return;
   const localAudioNow = audioCtx.currentTime + offsetAudioSec;
   const beatSec = 60 / currentState.bpm;
@@ -537,7 +539,6 @@ function recalcFromLeaderTime() {
   const beatStartLeader = currentState.startAtLeaderAudio + beatNumber * beatSec;
   const offsetSec = beatStartLeader - localAudioNow;
   nextBeatTime = audioCtx.currentTime + Math.max(0, offsetSec);
-  console.log(`recalcFromLeaderTime: nextBeatTime=${nextBeatTime}`);
 }
 
 function schedulerTick() {
