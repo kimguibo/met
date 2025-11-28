@@ -301,10 +301,16 @@ function handleMessage(conn, msg) {
       calibrateBtn.disabled = false;
       calibrateBtn.textContent = 'Calibrate';
       autoCalibrate();
+      bpmInput.disabled = false;
+      beatsInput.disabled = false;
+      leadInInput.disabled = false;
     } else {
       startBtn.disabled = true;
       calibrateBtn.disabled = true;
       calibrateBtn.textContent = 'Calibrate';
+      bpmInput.disabled = true;
+      beatsInput.disabled = true;
+      leadInInput.disabled = true;
     }
     return;
   }
@@ -484,6 +490,9 @@ function applyRemoteState(data) {
   }
   startBtn.disabled = true;
   calibrateBtn.disabled = true;
+  bpmInput.disabled = true;
+  beatsInput.disabled = true;
+  leadInInput.disabled = true;
 }
 
 function ensureAudio() {
@@ -669,6 +678,9 @@ function teardown() {
   startBtn.disabled = true;
   calibrateBtn.disabled = false;
   calibrateBtn.textContent = 'Calibrate';
+  bpmInput.disabled = false;
+  beatsInput.disabled = false;
+  leadInInput.disabled = false;
 }
 
 function finishCalibration() {
