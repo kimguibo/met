@@ -18,6 +18,12 @@
 - Optionally swap to Tone.js Transport for simpler scheduling (still needs a reliable clock source).
 
 ## Recent Changes
+- **Fixed `Uncaught SyntaxError: Unexpected end of input`**: Corrected a missing closing brace in the `connectToLeader` function in `client.js`.
+- **Fixed `Uncaught ReferenceError: stopPing is not defined`**: Implemented the missing `startPing` and `stopPing` functions in `client.js` to properly manage the ping timer, resolving disconnection issues for both leader and follower.
+- **Fixed Follower Calibration Logic**:
+    *   Modified the `calibrateBtn` event listener to allow followers to initiate calibration without an unnecessary alert.
+    *   Refactored `runCalibration` to distinguish between leader and follower roles, ensuring appropriate calibration logic for each.
+    *   Updated `finishCalibration` to correctly display "Calibrated" for followers and disable the button after calibration.
 - **Bilingual User Guide**: Added both English and Korean versions of the user guide to 'index.html' for better accessibility.
 - **Fixed downbeat sync**: Follower clients now wait for clock offset to be initialized before scheduling the first beat, preventing phase errors. Clock state is now reset properly on leader change or disconnect.
 - **Fixed BPM control for followers**: UI controls for BPM, beats, and lead-in are now correctly disabled for follower clients, preventing local changes from being overwritten.
