@@ -405,6 +405,7 @@ function connectToLeader(id) {
   if (directLeaderConn) {
     directLeaderConn.close();
     stopPing();
+  }
   offsetSamples.length = 0;
   setOffsetStatus('Calibrating…');
 
