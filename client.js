@@ -491,7 +491,6 @@ function stopPlayback() {
     clearInterval(schedulerId);
     schedulerId = null;
   }
-  stopResync();
   stopVisualLoop();
   highlightBeat(-1);
 }
