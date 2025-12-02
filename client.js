@@ -93,10 +93,6 @@ leaderBtn.addEventListener('click', () => {
 });
 
 calibrateBtn.addEventListener('click', () => {
-  if (!isLeader()) {
-    alert('Only the leader can initiate calibration. Take leader and retry.');
-    return;
-  }
   runCalibration();
 });
 
@@ -400,6 +396,22 @@ function broadcastPeerCount() {
     );
 }
 
+function startPing(interval) {
+  stopPing();
+  pingTimer = setInterval(() => {
+    if (directLeaderConn && directLeaderConn.open) {
+      send(directLeaderConn, { type: 'ping', t0: performance.now() });
+    }
+  }, interval);
+}
+
+function stopPing() {
+  if (pingTimer) {
+    clearInterval(pingTimer);
+    pingTimer = null;
+  }
+}
+
 function connectToLeader(id) {
   if (directLeaderConn && directLeaderConn.peer === id) return;
   if (directLeaderConn) {
@@ -689,17 +701,18 @@ function finishCalibration() {
     pendingPlayback = false;
   }
 
+  calibrateBtn.textContent = 'Calibrated';
   if (isLeader()) {
-    calibrateBtn.textContent = 'Calibrated';
     calibrateBtn.disabled = false;
     startBtn.disabled = false;
+  } else {
+    calibrateBtn.disabled = true;
   }
 }
 
 function runCalibration() {
   ensureAudio();
-  // If leader is local (self), no need to ping.
-  if (!directLeaderConn || directLeaderConn.peer === selfId) {
+  if (isLeader()) {
     offsetMs = 0;
     offsetAudioSec = 0;
     setOffsetStatus(offsetMs);
@@ -708,6 +721,8 @@ function runCalibration() {
     startBtn.disabled = false;
     return;
   }
+
+  // Follower calibration logic
   calibrateBtn.textContent = 'Calibrating…';
   calibrateBtn.disabled = true;
   startBtn.disabled = true;
