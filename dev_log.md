@@ -15,6 +15,7 @@
 - Optionally swap to Tone.js Transport for simpler scheduling (still needs a reliable clock source).
 
 ## Recent Changes
+- **Fixed Start Button for Leader**: The start button is now correctly enabled for the leader after calibration.
 - **Fixed `Uncaught ReferenceError: stopCalibrationTimer is not defined`**: Defined `stopCalibrationTimer` before `startCalibrationTimer` to ensure it is available when called.
 - **Fixed Server Time Calibration**: Server time calibration is now only attempted on `localhost` to prevent errors on the deployed version.
 - **Project Cleanup**: Removed outdated `mystrategy.txt` and `requirements.txt` files.

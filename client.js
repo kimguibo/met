@@ -299,7 +299,7 @@ function handleMessage(conn, msg) {
       connectToLeader(leaderId);
     }
     if (isLeader()) {
-      startBtn.disabled = serverTimeOffset === 0;
+      startBtn.disabled = false;
       calibrateBtn.disabled = false;
       calibrateBtn.textContent = 'Calibrate';
       autoCalibrate();
@@ -706,7 +706,7 @@ function finishCalibration() {
   calibrateBtn.textContent = 'Calibrated';
   if (isLeader()) {
     calibrateBtn.disabled = false;
-    startBtn.disabled = serverTimeOffset === 0;
+    startBtn.disabled = false;
   } else {
     calibrateBtn.disabled = true;
   }
@@ -749,7 +749,7 @@ function runCalibration() {
     setOffsetStatus(offsetMs);
     calibrateBtn.textContent = 'Calibrated';
     calibrateBtn.disabled = false;
-    startBtn.disabled = serverTimeOffset === 0;
+    startBtn.disabled = false;
     return;
   }
 
