@@ -722,6 +722,9 @@ async function calibrateToServer() {
 }
 
 async function getServerTime() {
+  if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return { now: 0, rtt: 0, offset: 0 };
+  }
   const start = performance.now();
   const res = await fetch('/now');
   const { now: serverNow } = await res.json();
