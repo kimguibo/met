@@ -112,6 +112,7 @@ startBtn.addEventListener('click', () => {
   const nowLeaderAudio = audioCtx.currentTime;
   let startAtLeaderAudio = nowLeaderAudio + currentState.leadInMs / 1000;
   startAtLeaderAudio = Math.ceil(startAtLeaderAudio / barSec) * barSec; // snap to next bar
+  startPlayback(startAtLeaderAudio);
   currentState.startAtLeaderAudio = startAtLeaderAudio;
   currentState.playing = true;
   broadcastState();
@@ -379,11 +380,12 @@ function broadcastLeader(excludePeer) {
     );
 }
 
-function broadcastState() {
+function broadcastState(excludePeer) {
   if (isHub) {
     peer.connections &&
       Object.values(peer.connections).forEach((arr) =>
         arr.forEach((c) => {
+          if (excludePeer && c.peer === excludePeer) return;
           if (c.open) send(c, { type: 'state', data: currentState });
         })
       );
